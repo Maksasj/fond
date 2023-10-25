@@ -27,9 +27,13 @@ start:
     ; Copy command line argument to 'argument_buffer'
     copy_buffer_ptr_m<81h, <offset argument_buffer>, argument_length>
 
-    ; Todo add split buffer by delim procedure
+    ; Shift buffer to the left, by 1 character
+    shift_buffer_left_ptr_m<<offset argument_buffer>, 128, 1>
 
+    ; Print buffer
     write_file_m <argument_buffer, 1, argument_length>
+    
+    ; Todo add split buffer by delim procedure
 
     exit_ok_m
 end start
