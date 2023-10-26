@@ -6,15 +6,19 @@
 .code
 
 push_all_m MACRO
-    push ax
-    push bx
-    push cx
-    push dx
+    push ax ; ah ~ al
+    push bx ; bh ~ bl
+    push cx ; ch ~ cl
+    push dx ; dh ~ dl
 
     push bp
+    push di
+    push si
 ENDM
 
 pop_all_m MACRO
+    pop si
+    pop di
     pop bp
     
     pop dx

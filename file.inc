@@ -157,6 +157,17 @@ write_file_m MACRO p_bundle:REQ
     write_file_internal_m p_bundle
 ENDM
 
+write_file_ptr_internal_m MACRO p_buffer_ptr:REQ, p_file_handle:REQ, p_bytes_to_write:REQ
+    push p_file_handle
+    push p_buffer_ptr
+    push p_bytes_to_write
+    call write_file
+ENDM
+
+write_file_ptr_m MACRO p_bundle:REQ
+    write_file_ptr_internal_m p_bundle
+ENDM
+
 ; push offset file handle <- Handle
 ; call file_close
 file_close:
