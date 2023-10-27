@@ -1,6 +1,8 @@
 .model small
 .stack 100h
 
+.386
+
 include io.inc
 include flow.inc
 include buffer.inc
@@ -11,6 +13,8 @@ include buffer.inc
 
     arguments_delim dw 128 dup(0000h)
 
+    delim db "'", '$'
+    argg db "arg", '$'
     endl db 13, 10, '$'
 
 .code
@@ -33,14 +37,13 @@ start:
 
     ; Shift buffer to the left, by 1 character
     shift_buffer_left_ptr_m<<offset argument_buffer>, 256, 1>
+    dec argument_length
 
     mov arguments_delim, offset argument_buffer
     mov bx, offset arguments_delim
+    mov di, 1
 
     parse_args:
-        write_file_ptr_m<[bx], 1, 3>
-        print_m<endl>
-
         add bx, 4
 
         push bx
@@ -53,16 +56,36 @@ start:
         mov ax, [bx]
         jmp_eql_m<ax, 0000h, break_parse_arg>
 
+        inc di
     jmp parse_args
     break_parse_arg:
 
-    for_each_arg:
+    mov cx, argument_length
 
-            
+    mov bx, offset arguments_delim
+    
+    for_m<si, 0, for_each_arg>
+        mov ax, [bx]
 
-    jmp for_each_arg
-    break_for_each_arg:
+        add bx, 2
+        count_bytes_until_ptr_m<bx, ax, cx, ' '>
+        mov ax, [bx]
 
+        sub bx, 2
+
+        mov bp, [bx]
+
+        print_m<delim>
+        write_file_ptr_m<bp, 0001h, ax>
+        print_m<delim>
+
+        print_m<endl>        
+
+        sub cx, ax
+        dec cx
+
+        add bx, 4
+    for_end_m<si, di, for_each_arg>
     
     ; Todo add split buffer by delim procedure
 

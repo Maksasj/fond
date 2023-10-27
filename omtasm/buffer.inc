@@ -139,7 +139,6 @@ find_byte_ptr_internal:
 
     ret
 
-
 find_byte_ptr_internal_m MACRO p_target_ptr:REQ, p_buffer_ptr:REQ, p_length:REQ, p_byte:REQ
     push_all_m
 
@@ -156,3 +155,52 @@ ENDM
 find_byte_ptr_m MACRO p_bundle:REQ 
     find_byte_ptr_internal_m p_bundle
 ENDM
+
+count_bytes_until_ptr_internal:
+    pop bp
+
+    pop ax ; p_target_ptr
+    pop bx ; p_buffer_ptr
+    pop dx ; p_length
+
+    xor cx, cx
+    pop cx ; p_delim
+    
+    push bp
+
+    xor di, di
+
+    for_m<si, 0, count_bytes_until_ptr_internal_loop>
+        mov ch, [bx + si]
+
+        cmp ch, cl
+        je count_bytes_until_ptr_internal_break
+
+        inc di
+    for_end_m<si, dx, count_bytes_until_ptr_internal_loop>
+
+    count_bytes_until_ptr_internal_break:
+
+    mov bx, ax
+    mov [bx], di
+
+    ret
+
+
+count_bytes_until_ptr_internal_m MACRO p_target_ptr:REQ, p_buffer_ptr:REQ, p_length:REQ, p_byte:REQ
+    push_all_m
+
+    push p_byte
+    push p_length
+    push p_buffer_ptr
+    push p_target_ptr
+
+    call count_bytes_until_ptr_internal
+
+    pop_all_m
+ENDM
+
+count_bytes_until_ptr_m MACRO p_bundle:REQ 
+    count_bytes_until_ptr_internal_m p_bundle
+ENDM
+

@@ -16,7 +16,6 @@ print_ptr_m MACRO message:REQ
     int 21h
 
     pop_all_m
-
 ENDM
 
 print_m MACRO message:REQ
