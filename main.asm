@@ -18,16 +18,27 @@ include data.inc
 
     ; File thing
     dta_m<search_dta>
-    ; search_template db 128 dup(0)
-
-    ; search_template db 'test\*.*', 0  ; Search template for find first/next
-
     search_template db 128 dup('#')  ; Search template for find first/next
     any_file_search_template db "\*.*", 0
+
+    ; Comparison buffer
+    active_file_handle dw 0
+
+    active_file_name_length dw 0
+    byte_buffer_m<active_file_name, 256>
+
+    active_folder_path_length dw 0
+    byte_buffer_m<active_folder_path, 256>
+
+    active_file_path_length dw 0
+    byte_buffer_m<active_file_path, 256>
+
+    comparison_buffer db 256 dup(0000h)
 
     ; Some const string, just for convenience
     delim db "'", '$'
     endl db 13, 10, '$'
+    processing_file_msg db "Processing file: '", '$'
 
 .code
 
@@ -35,6 +46,41 @@ setup_m MACRO
     mov dx, @data
     mov ds, dx
 ENDM
+
+process_file:
+    pop bp
+    push bp
+
+    fill_buffer_ptr_m<<offset active_file_name>, 256, '$'>
+    count_bytes_until_ptr_m<<offset active_file_name_length>, <offset search_dta + 30>, 256, 0000h>
+    copy_buffer_ptr_m<<offset search_dta + 30>, <offset active_file_name>, active_file_name_length>
+
+    fill_buffer_ptr_m<<offset active_file_path>, 256, 0000h>
+    copy_buffer_ptr_m<<offset active_folder_path>, <offset active_file_path>, active_folder_path_length>
+
+    mov bx, offset active_file_path
+    add bx, active_folder_path_length
+    mov [bx], '\'
+    inc bx
+
+    copy_buffer_ptr_m<<offset active_file_name>, bx, active_file_name_length>
+
+    print_m<processing_file_msg>
+    print_m<active_file_name>
+    print_m<delim>
+    print_m<endl>
+
+    open_file_read_m<active_file_path, active_file_handle>
+
+    ; loop_over_string:
+    ;     read_file_m<bytes_read, tmp_buffer, fh_in, 512>
+    ;     write_file_m<tmp_buffer, fh_out, bytes_read>
+; 
+    ;     jmp_not_eql_m <bytes_read, 0, loop_over_string>
+    
+    file_close_m<active_file_handle>
+
+    ret
 
 start:
     setup_m
@@ -110,8 +156,19 @@ start:
     for_m<si, 0, for_each_arg>
         mov bp, [bx]
         mov ax, [bx + 2]
-
+        
+        ; fill_buffer_ptr_m<<offset active_file_name>, 256, '$'>
         copy_buffer_ptr_m<bp, <offset search_template>, ax>
+
+        ; There we process active folder path
+        ; fill_buffer_ptr_m<<offset active_folder_path>, 256, '$'>
+        ; count_bytes_until_ptr_m<<offset active_folder_path_length>, <offset active_folder_path>, 256, 0000h>
+        ; copy_buffer_ptr_m<bp, <offset active_folder_path>, active_folder_path_length>
+
+        fill_buffer_ptr_m<<offset active_folder_path>, 256, '$'>
+        ; count_bytes_until_ptr_m<<offset active_folder_path_length>, bp, 256, 0000h>
+        copy_buffer_ptr_m<bp, <offset active_folder_path>, ax>
+        mov active_folder_path_length, ax
 
         push bx
 
@@ -129,8 +186,9 @@ start:
         find_first_file_m<search_template, done_search>
 
         search_next_file:
-            write_file_ptr_m<<offset search_dta + 30>, 0001h, 000Ch> ; 000D - 13 bytes
-            print_m<endl>
+            push_all_m
+            call process_file
+            pop_all_m
 
             find_next_file_m<done_search>
         
