@@ -2,6 +2,7 @@
 .stack 100h
 
 include catch.inc
+include stack.inc
 
 .data
 
@@ -27,9 +28,13 @@ open_file_read:
     ret
 
 open_file_read_internal_m MACRO p_file_name:REQ, p_file_handle:REQ
+    push_all_m
+
     push offset p_file_handle
     push offset p_file_name
     call open_file_read
+
+    pop_all_m
 ENDM
 
 open_file_read_m MACRO p_bundle:REQ
@@ -78,9 +83,13 @@ create_file:
     ret
 
 create_file_internal_m MACRO p_file_name:REQ, p_file_handle:REQ
+    push_all_m
+
     push offset p_file_handle
     push offset p_file_name
     call create_file
+
+    pop_all_m
 ENDM
 
 create_file_m MACRO p_bundle:REQ
@@ -113,11 +122,15 @@ read_file:
     ret
 
 read_file_internal_m MACRO p_bytes_read_out:REQ, p_buffer:REQ, p_file_handle:REQ, p_bytes_to_read:REQ
+    push_all_m
+    
     push offset p_bytes_read_out
     push p_file_handle
     push offset p_buffer
     push p_bytes_to_read
     call read_file
+
+    pop_all_m
 ENDM
 
 read_file_m MACRO p_bundle:REQ
@@ -147,10 +160,14 @@ write_file:
     ret
 
 write_file_internal_m MACRO p_buffer:REQ, p_file_handle:REQ, p_bytes_to_write:REQ
+    push_all_m
+
     push p_file_handle
     push offset p_buffer
     push p_bytes_to_write
     call write_file
+
+    pop_all_m
 ENDM
 
 write_file_m MACRO p_bundle:REQ
@@ -158,10 +175,14 @@ write_file_m MACRO p_bundle:REQ
 ENDM
 
 write_file_ptr_internal_m MACRO p_buffer_ptr:REQ, p_file_handle:REQ, p_bytes_to_write:REQ
+    push_all_m
+
     push p_file_handle
     push p_buffer_ptr
     push p_bytes_to_write
     call write_file
+
+    pop_all_m
 ENDM
 
 write_file_ptr_m MACRO p_bundle:REQ
@@ -186,6 +207,10 @@ file_close:
 
 ; FILE_CLOSE
 file_close_m MACRO p_file_handle:REQ
+    push_all_m
+
     push p_file_handle
     call file_close
+
+    pop_all_m
 ENDM

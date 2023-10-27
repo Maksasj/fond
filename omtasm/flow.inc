@@ -1,8 +1,10 @@
 .model small
 .stack 100h
 
-.data
+include stack.inc
 
+.data
+    
 .code
 
 ; FOR
@@ -34,6 +36,16 @@ ENDM
 
 jmp_not_eql_m MACRO p_bundle:REQ
     jmp_not_eql_internal_m p_bundle
+ENDM
+
+; JMP_EQL
+jmp_eql_internal_m MACRO p_first:REQ, p_second:REQ, p_label:REQ
+    cmp p_first, p_second
+    je p_label
+ENDM
+
+jmp_eql_m MACRO p_bundle:REQ
+    jmp_eql_internal_m p_bundle
 ENDM
 
 ; (p_min_value <= p_value <= p_max_value) -> p_label

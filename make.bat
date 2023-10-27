@@ -1,2 +1,2 @@
-tasm %1
+tasm /iomtasm %1
 tlink /v %1

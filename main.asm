@@ -9,7 +9,9 @@ include buffer.inc
     argument_buffer db 256 dup(?)
     argument_length dw 0
 
-    arguments_delim dw 128 dup(?)
+    arguments_delim dw 128 dup(0000h)
+
+    endl db 13, 10, '$'
 
 .code
 
@@ -32,13 +34,35 @@ start:
     ; Shift buffer to the left, by 1 character
     shift_buffer_left_ptr_m<<offset argument_buffer>, 256, 1>
 
+    mov arguments_delim, offset argument_buffer
+    mov bx, offset arguments_delim
 
-    ; mov arguments_delim, offset argument_buffer + 2
+    parse_args:
+        write_file_ptr_m<[bx], 1, 3>
+        print_m<endl>
 
-    find_byte_ptr_m<<offset arguments_delim>, <offset argument_buffer>, 256, ' '>
+        add bx, 4
 
-    ; Print buffer
-    write_file_ptr_m <arguments_delim, 1, 10>
+        push bx
+            sub bx, 4
+            mov ax, [bx]
+        pop bx
+
+        find_byte_ptr_m<bx, ax, 256, ' '>
+
+        mov ax, [bx]
+        jmp_eql_m<ax, 0000h, break_parse_arg>
+
+    jmp parse_args
+    break_parse_arg:
+
+    for_each_arg:
+
+            
+
+    jmp for_each_arg
+    break_for_each_arg:
+
     
     ; Todo add split buffer by delim procedure
 

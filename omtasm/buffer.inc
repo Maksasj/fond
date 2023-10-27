@@ -115,13 +115,12 @@ find_byte_ptr_internal:
         cmp ch, cl
         jne continue_
 
-        ; print_m<poggers>
-
         mov di, bx
         push bx
         mov bx, ax
 
         add di, si
+        inc di
 
         mov [bx], di
 
@@ -129,9 +128,14 @@ find_byte_ptr_internal:
 
         ret
 
-
         continue_:
     for_end_m<si, dx, split_loop>
+
+    ; There we set target buffer value to nullptr, akka we could not find a byte
+    mov di, 0000h
+
+    mov bx, ax
+    mov [bx], di
 
     ret
 
@@ -152,57 +156,3 @@ ENDM
 find_byte_ptr_m MACRO p_bundle:REQ 
     find_byte_ptr_internal_m p_bundle
 ENDM
-
-
-; split_buffer_by_delim_internal:
-;     pop bp
-; 
-;     pop ax ; p_target_buffer
-;     pop bx ; p_buffer_ptr
-;     pop dx ; p_length
-; 
-;     xor cx, cx
-;     pop cx ; p_delim
-; 
-;     xor di, di
-; 
-;     push bp
-; 
-;     xor bp, bp
-; 
-;     for_m<si, 0, split_loop>
-;         mov ch, [bx + si + 1]
-; 
-;         cmp ch, cl
-;         jne continue_
-;         inc di
-; 
-;         mov [ax + di], bx + si        
-;    
-;         print_m<poggers>
-; 
-;         continue_:
-;     for_end_m<si, dx, split_loop>
-; 
-; 
-;     ret
-; 
-; split_buffer_by_delim_internal_m MACRO p_target_buffer:REQ, p_buffer_ptr:REQ, p_length:REQ, p_delim:REQ
-;     push_all_m
-; 
-;     push p_delim
-;     push p_length
-;     push p_buffer_ptr
-;     push p_target_buffer
-; 
-;     call split_buffer_by_delim_internal
-; 
-;     pop_all_m
-; ENDM
-; 
-; 
-; split_buffer_by_delim_m MACRO p_bundle:REQ 
-;     split_buffer_by_delim_internal_m p_bundle
-; ENDM
-
-
