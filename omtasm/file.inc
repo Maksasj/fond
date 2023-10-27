@@ -191,7 +191,7 @@ ENDM
 
 ; push offset file handle <- Handle
 ; call file_close
-file_close:
+file_close_internal:
     pop bp ; Push adress where to return into bp register
    
     mov ax, 3e00h
@@ -210,7 +210,55 @@ file_close_m MACRO p_file_handle:REQ
     push_all_m
 
     push p_file_handle
-    call file_close
+    call file_close_internal
+
+    pop_all_m
+ENDM
+
+setup_dta_internal:
+    pop bp
+
+    pop bx
+
+    mov ah, 1Ah
+    lea dx, [bx]
+    int 21h
+
+    push bp
+
+    ret
+
+setup_dta_m MACRO p_dta:REQ
+    push_all_m
+
+    push p_dta
+    call setup_dta_internal
+
+    pop_all_m
+ENDM
+
+find_first_file_internal_m MACRO p_dta:REQ, p_label:REQ
+    mov ah, 4Eh
+    lea dx, p_dta
+    mov cx, 0
+    int 21h
+    jc p_label
+ENDM
+
+find_first_file_m MACRO p_bundle:REQ
+    push_all_m
+
+    find_first_file_internal_m p_bundle
+
+    pop_all_m
+ENDM
+
+find_next_file_m MACRO p_label:REQ
+    push_all_m
+
+    mov ah, 4Fh
+    int 21h
+    jc p_label
 
     pop_all_m
 ENDM

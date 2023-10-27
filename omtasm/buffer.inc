@@ -15,16 +15,18 @@ copy_buffer_ptr_internal:
 
     pop cx ; p_length
     pop di ; p_dst_buffer_ptr
-    pop si ; p_source_buffer_ptr
-
-    copy_loop:
-        mov al, es:[si]
-        mov [di], al
-        inc si
-        inc di
-    loop copy_loop
+    pop bx ; p_source_buffer_ptr
 
     push bp
+
+    xor ax, ax
+
+    copy_buffer_ptr_internal_loop:
+        mov al, [bx]
+        mov [di], al
+        inc bx
+        inc di
+    loop copy_buffer_ptr_internal_loop
 
     ret
 
@@ -42,6 +44,43 @@ ENDM
 
 copy_buffer_ptr_m MACRO p_bundle:REQ 
     copy_buffer_ptr_internal_m p_bundle
+ENDM
+
+
+copy_es_buffer_ptr_internal: 
+    pop bp
+
+    pop cx ; p_length
+    pop di ; p_dst_buffer_ptr
+    pop si ; p_source_buffer_ptr
+
+    push bp
+
+    xor ax, ax
+
+    copy_es_buffer_ptr_internal_loop:
+        mov al, es:[si]
+        mov [di], al
+        inc si
+        inc di
+    loop copy_es_buffer_ptr_internal_loop
+
+    ret
+
+copy_es_buffer_ptr_internal_m MACRO p_source_buffer_ptr:REQ, p_dst_buffer_ptr:REQ, p_length:REQ
+    push_all_m
+
+    push p_source_buffer_ptr
+    push p_dst_buffer_ptr
+    push p_length
+
+    call copy_es_buffer_ptr_internal
+
+    pop_all_m
+ENDM
+
+copy_es_buffer_ptr_m MACRO p_bundle:REQ 
+    copy_es_buffer_ptr_internal_m p_bundle
 ENDM
 
 shift_buffer_left_ptr_internal: 
@@ -186,7 +225,6 @@ count_bytes_until_ptr_internal:
 
     ret
 
-
 count_bytes_until_ptr_internal_m MACRO p_target_ptr:REQ, p_buffer_ptr:REQ, p_length:REQ, p_byte:REQ
     push_all_m
 
@@ -204,3 +242,35 @@ count_bytes_until_ptr_m MACRO p_bundle:REQ
     count_bytes_until_ptr_internal_m p_bundle
 ENDM
 
+fill_buffer_ptr_internal:
+    pop bp
+
+    pop bx ; p_buffer
+    pop dx ; p_length
+
+    xor ax, ax
+    pop ax ; p_byte
+
+    push bp
+
+    for_m<si, 0, fill_buffer_ptr_internal_loop>
+        mov [bx], al
+        inc bx
+    for_end_m<si, dx, fill_buffer_ptr_internal_loop>
+
+    ret
+
+fill_buffer_ptr_internal_m MACRO p_buffer:REQ, p_length:REQ, p_byte:REQ
+    push_all_m
+
+    push p_byte
+    push p_length
+    push p_buffer
+    call fill_buffer_ptr_internal
+
+    pop_all_m
+ENDM
+
+fill_buffer_ptr_m MACRO p_bundle:REQ
+    fill_buffer_ptr_internal_m p_bundle
+ENDM

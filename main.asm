@@ -6,15 +6,27 @@
 include io.inc
 include flow.inc
 include buffer.inc
+include data.inc
 
 .data
-    argument_buffer db 256 dup(?)
+    ; Argument things
+    byte_buffer_m<argument_buffer, 256>
     argument_length dw 0
 
     arguments_delim dw 128 dup(0000h)
+    arguments_count dw 0
 
+    ; File thing
+    dta_m<search_dta>
+    ; search_template db 128 dup(0)
+
+    ; search_template db 'test\*.*', 0  ; Search template for find first/next
+
+    search_template db 128 dup('#')  ; Search template for find first/next
+    any_file_search_template db "\*.*", 0
+
+    ; Some const string, just for convenience
     delim db "'", '$'
-    argg db "arg", '$'
     endl db 13, 10, '$'
 
 .code
@@ -33,7 +45,7 @@ start:
     mov argument_length, cx
 
     ; Copy command line argument to 'argument_buffer'
-    copy_buffer_ptr_m<81h, <offset argument_buffer>, argument_length>
+    copy_es_buffer_ptr_m<81h, <offset argument_buffer>, argument_length>
 
     ; Shift buffer to the left, by 1 character
     shift_buffer_left_ptr_m<<offset argument_buffer>, 256, 1>
@@ -61,10 +73,9 @@ start:
     break_parse_arg:
 
     mov cx, argument_length
-
     mov bx, offset arguments_delim
     
-    for_m<si, 0, for_each_arg>
+    for_m<si, 0, for_each_arg_post>
         mov ax, [bx]
 
         add bx, 2
@@ -75,19 +86,60 @@ start:
 
         mov bp, [bx]
 
+        ; bp - pointer to string
+        ; ax - length of string
         print_m<delim>
         write_file_ptr_m<bp, 0001h, ax>
         print_m<delim>
-
-        print_m<endl>        
+        print_m<endl>
 
         sub cx, ax
         dec cx
 
         add bx, 4
+    for_end_m<si, di, for_each_arg_post>
+
+    mov arguments_count, di
+    mov bx, offset arguments_delim
+
+    ; Skip searchable word
+    add bx, 4
+
+    dec di
+
+    for_m<si, 0, for_each_arg>
+        mov bp, [bx]
+        mov ax, [bx + 2]
+
+        copy_buffer_ptr_m<bp, <offset search_template>, ax>
+
+        push bx
+
+        mov bx, offset search_template
+        add bx, ax
+
+        copy_buffer_ptr_m<<offset any_file_search_template>, bx, 5>
+
+        pop bx
+
+        mov cx, ax
+        add cx, 5
+
+        setup_dta_m<offset search_dta>
+        find_first_file_m<search_template, done_search>
+
+        search_next_file:
+            write_file_ptr_m<<offset search_dta + 30>, 0001h, 000Ch> ; 000D - 13 bytes
+            print_m<endl>
+
+            find_next_file_m<done_search>
+        
+            jmp search_next_file
+
+        done_search:
+        
+        add bx, 4
     for_end_m<si, di, for_each_arg>
-    
-    ; Todo add split buffer by delim procedure
 
     exit_ok_m
 end start
