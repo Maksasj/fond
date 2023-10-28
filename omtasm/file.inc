@@ -1,9 +1,6 @@
 .model small
 .stack 100h
 
-include catch.inc
-include stack.inc
-
 .data
 
 .code
@@ -261,4 +258,42 @@ find_next_file_m MACRO p_label:REQ
     jc p_label
 
     pop_all_m
+ENDM
+
+lseek_internal:
+    pop bp
+
+    pop dx
+    pop cx
+
+    mov al, 1
+    mov ah, 42h
+    pop bx
+
+    int 21h
+
+    ; TODO move this cringe from there
+    ; format_to_buffer_ptr_32u_m<<offset file_match_progress_msg>, dx, ax>
+
+    push bp
+
+    catch_m
+
+    ret
+
+lseek_internal_m MACRO p_file_handle:REQ, p_high_offset_bytes:REQ, p_low_offset_bytes:REQ
+    push_all_m
+
+    push p_file_handle
+    
+    push p_high_offset_bytes
+    push p_low_offset_bytes
+
+    call lseek_internal
+
+    pop_all_m
+ENDM
+
+lseek_m MACRO p_bundle:REQ
+    lseek_internal_m p_bundle
 ENDM

@@ -1,8 +1,6 @@
 .model small
 .stack 100h
 
-include print.inc
-
 .data
     error_message db "Error", '$'
 

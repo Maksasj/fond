@@ -1,9 +1,6 @@
 .model small
 .stack 100h
 
-include print.inc
-include file.inc
-
 .data
 
 .code

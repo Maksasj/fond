@@ -1,12 +1,12 @@
 .model small
 .stack 100h
 
-include stack.inc
-include flow.inc
-include print.inc
-
 .data
+
     poggers db "huj", '$'
+    matchhh db "matchhh", '$'
+    dot db ".", '$'
+    not_eql db "not eql", '$'
 
 .code
 
@@ -273,4 +273,155 @@ ENDM
 
 fill_buffer_ptr_m MACRO p_bundle:REQ
     fill_buffer_ptr_internal_m p_bundle
+ENDM
+
+; jmp_eql_buffer_internal:
+;     pop bp
+; 
+;     pop ax ; p_result
+;     mov bx, ax
+;     mov [bx], 0
+; 
+;     pop di ; p_length
+;     pop bx ; p_second_buffer_ptr
+;     pop dx ; p_first_buffer_ptr
+; 
+;     push bp
+; 
+;     for_m<si, 0, compare_buffer_ptr_internal_loop>
+;         mov ch, [bx]
+; 
+;         push bx
+;         mov bx, dx
+; 
+;         mov cl, [bx]
+; 
+;         pop bx
+; 
+;         cmp ch, cl
+; 
+;         inc bx
+;         inc dx
+; 
+;         jne compare_buffer_ptr_internal_not_eql
+;     for_end_m<si, di, compare_buffer_ptr_internal_loop>
+; 
+;     mov bx, ax
+;     mov [bx], 1
+;     print_m<poggers>
+; 
+;     compare_buffer_ptr_internal_not_eql:
+; 
+;     ret
+
+
+jmp_eql_buffer_internal:
+    pop bp
+
+    pop ax ; p_result
+
+    mov bx, ax
+    mov byte ptr [bx], 0
+
+    pop di ; p_length
+    pop bx ; p_second_buffer_ptr
+    pop dx ; p_first_buffer_ptr
+
+    push bp
+
+    for_m<si, 0, jmp_eql_buffer_internal_loop>
+        mov ch, [bx]
+
+        push bx
+        mov bx, dx
+        mov cl, [bx]
+        pop bx
+
+        cmp cl, ch
+        jne compare_buffer_ptr_internal_not_eql
+
+        inc bx
+        inc dx
+    for_end_m<si, di, jmp_eql_buffer_internal_loop>
+
+    mov bx, ax
+    mov byte ptr [bx], 1
+
+    compare_buffer_ptr_internal_not_eql:
+
+    ret
+
+jmp_eql_buffer_internal_m MACRO p_first_buffer_ptr:REQ, p_second_buffer_ptr:REQ, p_length:REQ, p_result:REQ
+    push_all_m
+
+    push p_first_buffer_ptr
+    push p_second_buffer_ptr
+    push p_length
+    push p_result
+
+    call jmp_eql_buffer_internal
+
+    pop_all_m
+ENDM
+
+jmp_eql_buffer_m MACRO p_bundle:REQ
+    jmp_eql_buffer_internal_m p_bundle
+ENDM
+
+format_to_buffer_ptr_32u_internal:
+    pop bp
+
+    pop di
+    pop dx
+    pop ax
+
+    mov     bx,10
+    push    bx
+
+    format_to_buffer_ptr_32u_internal_a: 
+        mov     cx,ax
+        mov     ax,dx
+        xor     dx,dx
+        div     bx
+        xchg    ax,cx
+        div     bx
+        push    dx
+        mov     dx,cx
+        or      cx,ax
+        jnz     format_to_buffer_ptr_32u_internal_a
+        pop     dx
+
+    format_to_buffer_ptr_32u_internal_b: 
+        add     dl, '0'
+
+        push bx
+
+        mov bx, di
+        mov [bx], dl
+        inc di
+
+        pop bx
+
+        pop     dx
+        cmp     dx,bx
+        jb      format_to_buffer_ptr_32u_internal_b
+
+    push bp
+
+    ret
+
+format_to_buffer_ptr_32u_internal_m MACRO p_buffer_ptr:REQ, p_high:REQ, p_low:REQ
+    push_all_m
+
+    push p_low
+    push p_high
+    push p_buffer_ptr
+
+    call format_to_buffer_ptr_32u_internal        
+
+    pop_all_m
+ENDM
+
+format_to_buffer_ptr_32u_m MACRO p_bundle:REQ
+    format_to_buffer_ptr_32u_internal_m p_bundle
 ENDM

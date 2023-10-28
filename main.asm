@@ -3,10 +3,7 @@
 
 .386
 
-include io.inc
-include flow.inc
-include buffer.inc
-include data.inc
+include omtasm.inc
 
 .data
     ; Argument things
@@ -23,6 +20,7 @@ include data.inc
 
     ; Comparison buffer
     active_file_handle dw 0
+    active_file_bytes_read dw 0
 
     active_file_name_length dw 0
     byte_buffer_m<active_file_name, 256>
@@ -33,12 +31,20 @@ include data.inc
     active_file_path_length dw 0
     byte_buffer_m<active_file_path, 256>
 
-    comparison_buffer db 256 dup(0000h)
+    found_match_boolean db 0
+    comparison_buffer db 256 dup('#')
+
+    ; Progress
+    file_match_progress_msg db 16 dup(0000h)
 
     ; Some const string, just for convenience
     delim db "'", '$'
+    space db " ", '$'
     endl db 13, 10, '$'
     processing_file_msg db "Processing file: '", '$'
+    found_match_msg db "Found match in '", '$'
+    at_msg db " at ", '$'
+    byte_msg db "byte ", '$'
 
 .code
 
@@ -60,7 +66,7 @@ process_file:
 
     mov bx, offset active_file_path
     add bx, active_folder_path_length
-    mov [bx], '\'
+    mov byte ptr [bx], '\'
     inc bx
 
     copy_buffer_ptr_m<<offset active_file_name>, bx, active_file_name_length>
@@ -72,11 +78,41 @@ process_file:
 
     open_file_read_m<active_file_path, active_file_handle>
 
-    ; loop_over_string:
-    ;     read_file_m<bytes_read, tmp_buffer, fh_in, 512>
-    ;     write_file_m<tmp_buffer, fh_out, bytes_read>
-; 
-    ;     jmp_not_eql_m <bytes_read, 0, loop_over_string>
+    ; Todo
+    fill_buffer_ptr_m<<offset file_match_progress_msg>, 16, '$'>
+
+    mov active_file_bytes_read, 0
+    mov found_match_boolean, 0
+    match_loop:
+        mov bx, offset arguments_delim
+        mov ax, [bx + 2]
+        mov bx, [bx]
+
+        read_file_m<active_file_bytes_read, comparison_buffer, active_file_handle, ax>
+        jmp_not_eql_m <active_file_bytes_read, ax, break_match_loop>
+
+        ; There we move pointer to the left by (word_length - 1)
+        push ax
+        neg ax
+        inc ax
+        lseek_m<active_file_handle, 0ffffh, ax>
+        pop ax
+
+        jmp_eql_buffer_m<bx, <offset comparison_buffer>, ax, <offset found_match_boolean>>
+
+        cmp found_match_boolean, 1
+        jne match_loop
+
+    found_match:
+        print_m<found_match_msg>    
+        print_m<active_file_name>
+        print_m<delim>
+        print_m<at_msg>
+        print_m<byte_msg>
+        ; print_m<file_match_progress_msg>
+        print_m<endl>
+
+    break_match_loop:
     
     file_close_m<active_file_handle>
 

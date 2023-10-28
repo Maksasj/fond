@@ -1,8 +1,6 @@
 .model small
 .stack 100h
 
-include stack.inc
-
 .data
 
 .code
