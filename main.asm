@@ -36,22 +36,197 @@ include omtasm.inc
 
     ; Progress
     file_match_progress_msg db 16 dup(0000h)
+    progress_read_bytes dw 0, 0
 
     ; Some const string, just for convenience
-    delim db "'", '$'
-    space db " ", '$'
     endl db 13, 10, '$'
-    processing_file_msg db "Processing file: '", '$'
-    found_match_msg db "Found match in '", '$'
-    at_msg db " at ", '$'
-    byte_msg db "byte ", '$'
+    stick db '/'
+    processing_file_msg db "[Processing] '"
+    scanned_msg db "', scanned "
+    bytes_endl_msg db " bytes$", 13, 10, '$'
 
+    match_prefix_msg db "[Match] "
+    index_prefix_msg db "[Index] "
+
+    match_msg db "found in '"
+    at_byte_msg db "' at byte "
+    clear_line_msg db 80 dup(0)
+
+    erase_string db 13, '$'
+
+    first_line_msg db "[Startup] FOND 0.1v just have started"
+    checking_msg db "[Index] Checking '"
+    index_file_msg db "' index file"
+    index_file_checked db "[Index] Index file checked"
+
+    ; Index file things
+    index_file_path db "index.bin", '$'
+    index_file_handle dw 0
+    index_file_row db 256 dup(0)
+    index_fil_bytes_read dw 0
 .code
 
 setup_m MACRO 
     mov dx, @data
     mov ds, dx
 ENDM
+
+save_match_to_index:
+    pop bp
+
+    mov bx, offset arguments_delim
+    mov ax, [bx + 2]
+    mov bx, [bx]
+
+    ; copy searchable word to index file row
+    copy_buffer_ptr_m<bx, <offset index_file_row>, ax>
+
+    mov bx, offset index_file_row
+    add bx, ax
+
+    copy_buffer_ptr_m<<offset progress_read_bytes>, bx, 4>
+
+    add bx, 4
+
+    mov cx, active_file_path_length
+    mov [bx], ch
+    inc bx
+    mov [bx], cl
+    inc bx
+
+    ; copy filepath to bx(offsert index_file_row + len(searable word))
+    copy_buffer_ptr_m<<offset active_file_path>, bx, active_file_path_length>
+    write_file_m<<index_file_row>, index_file_handle, 256>
+
+    push bp
+
+    ret
+
+process_index_file:
+    pop bp
+    
+    mov bx, offset arguments_delim
+    mov ax, [bx + 2]
+    mov bx, [bx]
+
+    write_file_m<<checking_msg>, 1, 18>
+    print_m<index_file_path>
+    write_file_m<<index_file_msg>, 1, 12>
+    print_m<endl>
+
+    open_file_extended_m<index_file_path, index_file_handle>
+    index_loop:
+        read_file_m<index_fil_bytes_read, index_file_row, index_file_handle, 256>
+        jmp_not_eql_m <index_fil_bytes_read, 256, break_index_loop>
+
+        jmp_eql_buffer_m<bx, <offset index_file_row>, ax, <offset found_match_boolean>>
+
+        cmp found_match_boolean, 1
+        je found_match_but_yes
+
+        jmp index_loop
+
+    found_match_but_yes:
+        push_all_m
+            push_all_m
+                mov bx, offset progress_read_bytes
+                mov di, offset index_file_row
+                add di, ax
+
+                copy_buffer_ptr_m<di, bx, 4>
+
+                add di, 4
+
+                mov ch, [di]
+                inc di
+                mov cl, [di]
+                inc di
+                
+                mov bx, offset active_file_path
+                mov active_file_path_length, cx
+
+                copy_buffer_ptr_m<di, bx, active_file_path_length>
+
+            pop_all_m
+
+            write_file_m<<index_prefix_msg>, 1, 8>
+            call print_found_match
+        pop_all_m
+
+        jmp index_loop
+
+    break_index_loop:
+
+    write_file_m<index_file_checked, 1, 26>
+    print_m<endl>
+
+    push bp
+
+    ret
+
+print_progress:
+    pop bp
+
+    print_m<erase_string>
+
+    write_file_m<<processing_file_msg>, 1, 14>
+    write_file_m<<active_file_name>, 1, active_file_name_length>
+    write_file_m<<scanned_msg>, 1, 11>
+
+    mov ax, progress_read_bytes
+    mov dx, progress_read_bytes + 2
+    print_32u_m<ax, dx>
+
+    write_file_m<<stick>, 1, 1>
+
+    mov ax, word ptr search_dta + 28
+    mov dx, word ptr search_dta + 26
+    print_32u_m<ax, dx>
+    
+    print_m<bytes_endl_msg>
+
+    push bp
+
+    ret
+
+print_found_match:
+    pop bp
+
+    write_file_m<<match_msg>, 1, 10>
+    write_file_m<<active_file_path>, 1, active_file_path_length>
+    write_file_m<<at_byte_msg>, 1, 10>
+
+    mov ax, progress_read_bytes
+    mov dx, progress_read_bytes + 2
+    print_32u_m<ax, dx>
+
+    print_m<endl>
+
+    push bp
+
+    ret
+
+found_match:
+    pop bp
+
+    push_all_m
+
+    print_m<erase_string>
+    write_file_m<<clear_line_msg>, 1, 79>
+    print_m<erase_string>
+    
+    write_file_m<<match_prefix_msg>, 1, 8>
+    call print_found_match
+
+    pop_all_m
+
+    push_all_m
+    call save_match_to_index
+    pop_all_m
+
+    push bp
+
+    ret
 
 process_file:
     pop bp
@@ -69,13 +244,17 @@ process_file:
     mov byte ptr [bx], '\'
     inc bx
 
+    push ax
+
+    mov ax, active_folder_path_length
+    inc ax
+    add ax, active_file_name_length
+
+    mov active_file_path_length, ax
+
+    pop ax
+
     copy_buffer_ptr_m<<offset active_file_name>, bx, active_file_name_length>
-
-    print_m<processing_file_msg>
-    print_m<active_file_name>
-    print_m<delim>
-    print_m<endl>
-
     open_file_read_m<active_file_path, active_file_handle>
 
     ; Todo
@@ -83,6 +262,9 @@ process_file:
 
     mov active_file_bytes_read, 0
     mov found_match_boolean, 0
+
+    mov si, 0
+
     match_loop:
         mov bx, offset arguments_delim
         mov ax, [bx + 2]
@@ -98,19 +280,32 @@ process_file:
         lseek_m<active_file_handle, 0ffffh, ax>
         pop ax
 
+        get_file_ptr_m<active_file_handle, <offset progress_read_bytes>>
+
+
+        mov cx, progress_read_bytes + 2
+        and cx, 007Fh ; print progress every 127 bytes
+        cmp cx, 007Fh
+
+        jne not_time_to_print
+
+        push_all_m
+        call print_progress
+        pop_all_m
+
+        not_time_to_print:
+
         jmp_eql_buffer_m<bx, <offset comparison_buffer>, ax, <offset found_match_boolean>>
 
         cmp found_match_boolean, 1
         jne match_loop
 
-    found_match:
-        print_m<found_match_msg>    
-        print_m<active_file_name>
-        print_m<delim>
-        print_m<at_msg>
-        print_m<byte_msg>
-        ; print_m<file_match_progress_msg>
-        print_m<endl>
+
+    push_all_m
+
+    call found_match
+
+    pop_all_m
 
     break_match_loop:
     
@@ -168,13 +363,6 @@ start:
 
         mov bp, [bx]
 
-        ; bp - pointer to string
-        ; ax - length of string
-        print_m<delim>
-        write_file_ptr_m<bp, 0001h, ax>
-        print_m<delim>
-        print_m<endl>
-
         sub cx, ax
         dec cx
 
@@ -188,6 +376,18 @@ start:
     add bx, 4
 
     dec di
+
+    ;; There basically entry point of our program
+    push_all_m
+
+    write_file_m<<first_line_msg>, 1, 37>
+    print_m<endl>
+
+    call process_index_file
+
+    pop_all_m
+
+    ; exit_ok_m
 
     for_m<si, 0, for_each_arg>
         mov bp, [bx]

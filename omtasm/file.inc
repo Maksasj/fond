@@ -38,6 +38,47 @@ open_file_read_m MACRO p_bundle:REQ
     open_file_read_internal_m p_bundle
 ENDM
 
+open_file_extended:
+    pop bp ; Push adress where to return into bp register
+
+    mov ax, 6c00h
+    mov bl, 2
+    mov bh, 60h
+    mov cx, 00h
+    mov dl, 11h
+    mov dh, 0
+
+    pop si
+
+    int 21h
+    
+    ; Save handle to target adress
+    pop bx
+    mov [bx], ax
+
+    push bp ; Put back return adress
+
+    catch_m
+
+    ret
+
+open_file_extended_internal_m MACRO p_file_name:REQ, p_file_handle:REQ
+    push_all_m
+
+    push offset p_file_handle
+    push offset p_file_name
+    call open_file_extended
+
+    pop_all_m
+ENDM
+
+open_file_extended_m MACRO p_bundle:REQ
+    open_file_extended_internal_m p_bundle
+ENDM
+
+
+
+
 ; push offset fileHandle
 ; push offset fileName
 ; call open_file_write
@@ -296,4 +337,47 @@ ENDM
 
 lseek_m MACRO p_bundle:REQ
     lseek_internal_m p_bundle
+ENDM
+
+get_file_ptr_internal:
+    pop bp
+
+    pop si
+
+    xor dx, dx
+    xor cx, cx
+
+    mov al, 1
+    mov ah, 42h
+    pop bx
+
+    int 21h
+
+    mov bx, si
+    mov word ptr [bx], dx
+    add bx, 2
+    mov word ptr [bx], ax
+
+    ; TODO move this cringe from there
+    ; format_to_buffer_ptr_32u_m<<offset file_match_progress_msg>, dx, ax>
+
+    push bp
+
+    catch_m
+
+    ret
+
+get_file_ptr_internal_m MACRO p_file_handle:REQ, p_target_ptr:REQ
+    push_all_m
+
+    push p_file_handle
+    push p_target_ptr
+
+    call get_file_ptr_internal
+
+    pop_all_m
+ENDM
+
+get_file_ptr_m MACRO p_bundle:REQ
+    get_file_ptr_internal_m p_bundle
 ENDM
