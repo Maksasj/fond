@@ -76,7 +76,43 @@ open_file_extended_m MACRO p_bundle:REQ
     open_file_extended_internal_m p_bundle
 ENDM
 
+open_file_clear_extended:
+    pop bp ; Push adress where to return into bp register
 
+    mov ax, 6c00h
+    mov bl, 2
+    mov bh, 60h
+    mov cx, 00h
+    mov dl, 12h
+    mov dh, 0
+
+    pop si
+
+    int 21h
+    
+    ; Save handle to target adress
+    pop bx
+    mov [bx], ax
+
+    push bp ; Put back return adress
+
+    catch_m
+
+    ret
+
+open_file_clear_extended_internal_m MACRO p_file_name:REQ, p_file_handle:REQ
+    push_all_m
+
+    push offset p_file_handle
+    push offset p_file_name
+    call open_file_clear_extended
+
+    pop_all_m
+ENDM
+
+open_file_clear_extended_m MACRO p_bundle:REQ
+    open_file_clear_extended_internal_m p_bundle
+ENDM
 
 
 ; push offset fileHandle

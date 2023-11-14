@@ -275,6 +275,43 @@ fill_buffer_ptr_m MACRO p_bundle:REQ
     fill_buffer_ptr_internal_m p_bundle
 ENDM
 
+to_upper_case_buffer_ptr_internal:
+    pop bp
+
+    pop bx ; p_buffer
+    pop dx ; p_length
+
+    push bp
+
+    for_m<si, 0, tucbpi_loop>
+        mov al, [bx]
+
+        jmp_not_in_range_m<al, 'a', 'z', tucbpi_continue>
+
+        sub al, 32
+        mov [bx], al
+
+        tucbpi_continue:
+
+        inc bx
+    for_end_m<si, dx, tucbpi_loop>
+
+    ret
+
+to_upper_case_buffer_ptr_internal_m MACRO p_buffer:REQ, p_length:REQ
+    push_all_m
+
+    push p_length
+    push p_buffer
+    call to_upper_case_buffer_ptr_internal
+
+    pop_all_m
+ENDM
+
+to_upper_case_buffer_ptr_m MACRO p_bundle:REQ
+    to_upper_case_buffer_ptr_internal_m p_bundle
+ENDM
+
 ; jmp_eql_buffer_internal:
 ;     pop bp
 ; 

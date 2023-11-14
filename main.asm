@@ -58,12 +58,24 @@ include omtasm.inc
     checking_msg db "[Index] Checking '"
     index_file_msg db "' index file"
     index_file_checked db "[Index] Index file checked"
+    backup_copy_file_msg db "[Index] Backuping index file"
+
+    index_last_match_stored_msg db "[Index] Last match is already stored in index"
 
     ; Index file things
-    index_file_path db "index.bin", '$'
+    index_file_path db "i.bin", '$'
     index_file_handle dw 0
-    index_file_row db 256 dup(0)
-    index_fil_bytes_read dw 0
+    index_file_row db 256 dup('#')
+    index_file_bytes_read dw 0
+    
+    backup_index_file_path db "ib.bin", '$'
+    backup_index_file_handle dw 0
+
+    backup_index_file_row db 256 dup('#')
+    backup_index_file_bytes_read dw 0
+
+    test_msg db "Poggers$"
+
 .code
 
 setup_m MACRO 
@@ -71,8 +83,66 @@ setup_m MACRO
     mov ds, dx
 ENDM
 
+copy_backup_file:
+    pop bp
+
+    write_file_m<<backup_copy_file_msg>, 1, 28>
+    print_m<endl>
+
+    print_m<test_msg>
+
+    open_file_extended_m<index_file_path, index_file_handle>
+    open_file_clear_extended_m<backup_index_file_path, backup_index_file_handle>
+
+    backup_copy_loop:
+        read_file_m<backup_index_file_bytes_read, backup_index_file_row, index_file_handle, 256>
+        write_file_m<backup_index_file_row, backup_index_file_handle, backup_index_file_bytes_read>
+
+        jmp_not_eql_m <backup_index_file_bytes_read, 0, backup_copy_loop>
+
+    file_close_m<backup_index_file_handle>
+    file_close_m<index_file_handle>
+
+    mov index_file_handle, 0
+    mov backup_index_file_handle, 0
+
+    push bp
+    
+    ret
+
+check_if_already_in_index:
+    pop bp
+    
+    mov backup_index_file_bytes_read, 0000h
+
+    open_file_read_m<backup_index_file_path, backup_index_file_handle>
+
+    mov found_match_boolean, 0
+
+    check_loop:
+        read_file_m<backup_index_file_bytes_read, backup_index_file_row, backup_index_file_handle, 256>
+        jmp_not_eql_m <backup_index_file_bytes_read, 256, break_check_loop>
+
+        jmp_eql_buffer_m<<offset backup_index_file_row>, <offset index_file_row>, 256, <offset found_match_boolean>>
+
+        cmp found_match_boolean, 1
+        je break_check_loop
+
+        jmp check_loop
+
+    break_check_loop:
+
+    file_close_m<backup_index_file_handle>
+    mov backup_index_file_handle, 0
+
+    push bp
+
+    ret
+
 save_match_to_index:
     pop bp
+
+    fill_buffer_ptr_m<<offset index_file_row>, 256, '#'>
 
     mov bx, offset arguments_delim
     mov ax, [bx + 2]
@@ -96,7 +166,24 @@ save_match_to_index:
 
     ; copy filepath to bx(offsert index_file_row + len(searable word))
     copy_buffer_ptr_m<<offset active_file_path>, bx, active_file_path_length>
+
+    push_all_m
+        call check_if_already_in_index
+    pop_all_m
+
+    cmp found_match_boolean, 1
+    jne match_already_in_index_continue
+
+    write_file_m<<index_last_match_stored_msg>, 1, 45>
+    print_m<endl>
+
+    jmp do_not_save_to_index
+
+    match_already_in_index_continue:
+
     write_file_m<<index_file_row>, index_file_handle, 256>
+
+    do_not_save_to_index:
 
     push bp
 
@@ -116,8 +203,10 @@ process_index_file:
 
     open_file_extended_m<index_file_path, index_file_handle>
     index_loop:
-        read_file_m<index_fil_bytes_read, index_file_row, index_file_handle, 256>
-        jmp_not_eql_m <index_fil_bytes_read, 256, break_index_loop>
+        read_file_m<index_file_bytes_read, index_file_row, index_file_handle, 256>
+        jmp_not_eql_m <index_file_bytes_read, 256, break_index_loop>
+
+        to_upper_case_buffer_ptr_m<<offset index_file_row>, 256>
 
         jmp_eql_buffer_m<bx, <offset index_file_row>, ax, <offset found_match_boolean>>
 
@@ -210,14 +299,12 @@ found_match:
     pop bp
 
     push_all_m
-
-    print_m<erase_string>
-    write_file_m<<clear_line_msg>, 1, 79>
-    print_m<erase_string>
-    
-    write_file_m<<match_prefix_msg>, 1, 8>
-    call print_found_match
-
+        print_m<erase_string>
+        write_file_m<<clear_line_msg>, 1, 79>
+        print_m<erase_string>
+        
+        write_file_m<<match_prefix_msg>, 1, 8>
+        call print_found_match
     pop_all_m
 
     push_all_m
@@ -272,6 +359,8 @@ process_file:
 
         read_file_m<active_file_bytes_read, comparison_buffer, active_file_handle, ax>
         jmp_not_eql_m <active_file_bytes_read, ax, break_match_loop>
+
+        to_upper_case_buffer_ptr_m<<offset comparison_buffer>, active_file_bytes_read>
 
         ; There we move pointer to the left by (word_length - 1)
         push ax
@@ -332,6 +421,8 @@ start:
     mov bx, offset arguments_delim
     mov di, 1
 
+    to_upper_case_buffer_ptr_m<<offset argument_buffer>, 256>
+
     parse_args:
         add bx, 4
 
@@ -382,6 +473,8 @@ start:
 
     write_file_m<<first_line_msg>, 1, 37>
     print_m<endl>
+
+    call copy_backup_file
 
     call process_index_file
 
